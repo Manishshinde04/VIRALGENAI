@@ -31,6 +31,8 @@ Thumbs.db
 db.sqlite3
 *.log
 media/uploads/
+media/processed/
+staticfiles/
 
 # Byte-compiled
 *.pyc

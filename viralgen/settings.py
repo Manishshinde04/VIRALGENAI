@@ -1,19 +1,35 @@
 """
 ViralGen AI - Django Settings
 Full-stack DIP Web Application
+Production-ready with Railway deployment support.
 """
 
 import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv()
-
+# Load .env file — check both project root and viralgen/ subdirectory
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Try loading .env from project root first, then viralgen/ subdirectory
+_env_root = BASE_DIR / '.env'
+_env_sub = BASE_DIR / 'viralgen' / '.env'
+if _env_root.exists():
+    load_dotenv(_env_root)
+elif _env_sub.exists():
+    load_dotenv(_env_sub)
+else:
+    load_dotenv()  # Fallback: load from environment (Railway sets env vars directly)
+
 SECRET_KEY = os.getenv('SECRET_KEY', 'viralgen-secret-key-fallback')
-DEBUG = os.getenv('DEBUG', 'True') == 'True'
+DEBUG = os.getenv('DEBUG', 'False') == 'True'
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
+
+# CSRF trusted origins — required for Railway's *.railway.app domains
+CSRF_TRUSTED_ORIGINS = os.getenv(
+    'CSRF_TRUSTED_ORIGINS',
+    'https://*.railway.app,https://*.up.railway.app'
+).split(',')
 
 # Application definition
 INSTALLED_APPS = [
@@ -29,6 +45,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -81,10 +98,17 @@ TIME_ZONE = 'Asia/Kolkata'
 USE_I18N = True
 USE_TZ = True
 
-# Static files
+# Static files — WhiteNoise serves static files in production
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# WhiteNoise storage — compresses and caches static files
+STORAGES = {
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 # Media files (uploaded & processed images)
 MEDIA_URL = '/media/'
@@ -109,7 +133,16 @@ GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET', '')
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 SESSION_COOKIE_AGE = 86400  # 24 hours
 
+# Production security settings
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', 'True') == 'True'
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+
 # Login URL
 LOGIN_URL = '/auth/login/'
 LOGIN_REDIRECT_URL = '/dashboard/'
-
